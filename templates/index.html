@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zomato Restaurant Listing</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        h1 { color: #cb202d; }
+        #restaurants { list-style-type: none; padding: 0; }
+        #restaurants li { margin-bottom: 20px; border: 1px solid #ddd; padding: 10px; }
+        #pagination { margin-top: 20px; }
+        #pagination button { margin-right: 10px; }
+        #search { margin-bottom: 20px; }
+        .text-overflow { 
+            max-width: 300px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+</head>
+<body>
+    <h1>Zomato Restaurant Listing</h1>
+    
+    <div id="search">
+        <input type="number" id="lat" placeholder="Latitude" step="0.000001">
+        <input type="number" id="lon" placeholder="Longitude" step="0.000001">
+        <input type="number" id="radius" placeholder="Radius (km)" value="3">
+        <button onclick="searchRestaurants()">Search by Location</button>
+    </div>
+
+    <div id="text-search">
+        <input type="text" id="search-term" placeholder="Search by name or description">
+        <button onclick="searchByText()">Search by Text</button>
+    </div>
+
+    <ul id="restaurants"></ul>
+    
+    <div id="pagination">
+        <button onclick="changePage(-1)">Previous</button>
+        <span id="currentPage">1</span>
+        <button onclick="changePage(1)">Next</button>
+    </div>
+
+    <script>
+        let currentPage = 1;
+        const perPage = 10;
+
+        function fetchRestaurants() {
+            fetch(`/restaurants?page=${currentPage}&per_page=${perPage}`)
+                .then(response => response.json())
+                .then(data => {
+                    displayRestaurants(data);
+                });
+        }
+
+        function changePage(delta) {
+            currentPage += delta;
+            if (currentPage < 1) currentPage = 1;
+            fetchRestaurants();
+        }
+
+        function searchRestaurants() {
+            const lat = document.getElementById('lat').value;
+            const lon = document.getElementById('lon').value;
+            const radius = document.getElementById('radius').value;
+            
+            fetch(`/search?lat=${lat}&lon=${lon}&radius=${radius}`)
+                .then(response => response.json())
+                .then(data => {
+                    displayRestaurants(data);
+                });
+        }
+
+        function searchByText() {
+            const searchTerm = document.getElementById('search-term').value;
+            fetch(`/search_by_text?q=${encodeURIComponent(searchTerm)}&page=${currentPage}&per_page=${perPage}`)
+                .then(response => response.json())
+                .then(data => {
+                    displayRestaurants(data.restaurants);
+                    // Update pagination if needed
+                    // You might want to update total pages based on data.total_count
+                });
+        }
+
+        function displayRestaurants(restaurants) {
+            const restaurantList = document.getElementById('restaurants');
+            restaurantList.innerHTML = '';
+            restaurants.forEach(restaurant => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <h2>${restaurant['Restaurant Name']}</h2>
+                    <p class="text-overflow">Address: ${restaurant['Address']}</p>
+                    <p class="text-overflow">Cuisines: ${restaurant['Cuisines']}</p>
+                    <p>Average cost for two: ${restaurant['Average Cost for two']} ${restaurant['Currency']}</p>
+                    <p>Rating: ${restaurant['Aggregate rating']}/5 (${restaurant['Votes']} votes)</p>
+                    <p>Has table booking: ${restaurant['Has Table booking']}</p>
+                    <p>Has online delivery: ${restaurant['Has Online delivery']}</p>
+                    <p>Is delivering now: ${restaurant['Is delivering now']}</p>
+                    ${restaurant['distance'] ? `<p>Distance: ${restaurant['distance'].toFixed(2)} km</p>` : ''}
+                `;
+                restaurantList.appendChild(li);
+            });
+            document.getElementById('currentPage').textContent = currentPage;
+        }
+
+        fetchRestaurants();
+    </script>
+</body>
+</html>
